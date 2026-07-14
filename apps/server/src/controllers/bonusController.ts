@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import prisma from '../utils/prisma';
 import scoreCalculationService from '../services/ScoreCalculationService';
+import { isMemberActiveInQuarter } from '../utils/initScores';
 
 export const bonusController = {
   // 获取加分记录
@@ -8,15 +9,25 @@ export const bonusController = {
     try {
       const { quarterId, memberId } = req.query;
       const where: any = {};
-      
+
       if (quarterId) where.quarterId = Number(quarterId);
       if (memberId) where.partyMemberId = Number(memberId);
 
-      const records = await prisma.bonusRecord.findMany({
+      let records = await prisma.bonusRecord.findMany({
         where,
         include: { partyMember: true },
         orderBy: { createdAt: 'desc' }
       });
+
+      // 按转入/转出时间过滤
+      if (quarterId) {
+        const quarter = await prisma.quarter.findUnique({
+          where: { id: Number(quarterId) }
+        });
+        if (quarter) {
+          records = records.filter(r => isMemberActiveInQuarter(r.partyMember, quarter.startDate));
+        }
+      }
 
       res.json({ code: 200, data: records });
     } catch (error: any) {
@@ -121,15 +132,25 @@ export const deductionController = {
     try {
       const { quarterId, memberId } = req.query;
       const where: any = {};
-      
+
       if (quarterId) where.quarterId = Number(quarterId);
       if (memberId) where.partyMemberId = Number(memberId);
 
-      const records = await prisma.deductionRecord.findMany({
+      let records = await prisma.deductionRecord.findMany({
         where,
         include: { partyMember: true },
         orderBy: { createdAt: 'desc' }
       });
+
+      // 按转入/转出时间过滤
+      if (quarterId) {
+        const quarter = await prisma.quarter.findUnique({
+          where: { id: Number(quarterId) }
+        });
+        if (quarter) {
+          records = records.filter(r => isMemberActiveInQuarter(r.partyMember, quarter.startDate));
+        }
+      }
 
       res.json({ code: 200, data: records });
     } catch (error: any) {

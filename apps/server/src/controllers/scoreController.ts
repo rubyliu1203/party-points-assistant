@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import prisma from '../utils/prisma';
 import scoreCalculationService from '../services/ScoreCalculationService';
+import { isMemberActiveInQuarter } from '../utils/initScores';
 
 export const scoreController = {
   // 获取积分总台账
@@ -12,13 +13,22 @@ export const scoreController = {
         return res.status(400).json({ code: 400, message: '缺少quarterId参数' });
       }
 
-      const scores = await prisma.partyMemberScore.findMany({
+      const quarter = await prisma.quarter.findUnique({
+        where: { id: Number(quarterId) }
+      });
+
+      let scores = await prisma.partyMemberScore.findMany({
         where: { quarterId: Number(quarterId) },
         include: { partyMember: true },
         orderBy: {
           partyMember: { displayOrder: 'asc' }
         }
       });
+
+      // 按转入/转出时间过滤
+      if (quarter) {
+        scores = scores.filter(s => isMemberActiveInQuarter(s.partyMember, quarter.startDate));
+      }
 
       res.json({ code: 200, data: scores });
     } catch (error: any) {

@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import prisma from '../utils/prisma';
+import { isMemberActiveInQuarter } from '../utils/initScores';
 
 export const workScoreController = {
   // 获取党务加分月度列表
@@ -11,11 +12,15 @@ export const workScoreController = {
         return res.status(400).json({ code: 400, message: '缺少quarterId参数' });
       }
 
+      const quarter = await prisma.quarter.findUnique({
+        where: { id: Number(quarterId) }
+      });
+
       const where: any = { quarterId: Number(quarterId) };
       if (year) where.year = Number(year);
       if (month) where.month = Number(month);
 
-      const scores = await prisma.partyWorkScore.findMany({
+      let scores = await prisma.partyWorkScore.findMany({
         where,
         include: { partyMember: true },
         orderBy: [
@@ -24,6 +29,11 @@ export const workScoreController = {
           { month: 'asc' }
         ]
       });
+
+      // 按转入/转出时间过滤
+      if (quarter) {
+        scores = scores.filter(s => isMemberActiveInQuarter(s.partyMember, quarter.startDate));
+      }
 
       res.json({ code: 200, data: scores });
     } catch (error: any) {
@@ -48,10 +58,13 @@ export const workScoreController = {
         return res.status(404).json({ code: 404, message: '季度不存在' });
       }
 
-      const members = await prisma.partyMember.findMany({
+      const allMembers = await prisma.partyMember.findMany({
         where: { status: 'active' },
         orderBy: { displayOrder: 'asc' }
       });
+
+      // 按转入/转出时间过滤
+      const members = allMembers.filter(m => isMemberActiveInQuarter(m, quarter.startDate));
 
       const workScores = await prisma.partyWorkScore.findMany({
         where: { quarterId: Number(quarterId) }
@@ -143,9 +156,12 @@ export const workScoreController = {
       const months = quarterMonths[quarter.quarter] || [];
       const firstMonth = months[0];
 
-      const members = await prisma.partyMember.findMany({
+      const allMembers = await prisma.partyMember.findMany({
         where: { status: 'active' }
       });
+
+      // 按转入/转出时间过滤
+      const members = allMembers.filter(m => isMemberActiveInQuarter(m, quarter.startDate));
 
       let updatedCount = 0;
       for (const member of members) {

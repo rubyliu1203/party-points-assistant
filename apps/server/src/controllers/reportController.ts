@@ -4,6 +4,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import prisma from '../utils/prisma';
 import { QUARTER_MONTHS } from '../utils/constants';
+import { isMemberActiveInQuarter } from '../utils/initScores';
 
 const TEMPLATE_PATH = path.resolve(__dirname, '../../../../template/【产品研发部党支部】党员积分导出模版.xlsx');
 const WORK_SCORE_TEMPLATE_PATH = path.resolve(__dirname, '../../../../template/【产品研发部党支部】党员党务积分导出模版.xlsx');
@@ -28,11 +29,12 @@ export const reportController = {
       const workbook = new ExcelJS.Workbook();
       await workbook.xlsx.readFile(TEMPLATE_PATH);
 
-      // 获取党员列表（按displayOrder排序）
-      const members = await prisma.partyMember.findMany({
+      // 获取党员列表（按displayOrder排序，并按转入/转出时间过滤）
+      const allMembers = await prisma.partyMember.findMany({
         where: { status: 'active' },
         orderBy: { displayOrder: 'asc' }
       });
+      const members = allMembers.filter(m => isMemberActiveInQuarter(m, quarter.startDate));
 
       // 查询数据
       const scores = await prisma.partyMemberScore.findMany({
@@ -228,10 +230,11 @@ export const reportController = {
       const workbook = new ExcelJS.Workbook();
       await workbook.xlsx.readFile(WORK_SCORE_TEMPLATE_PATH);
 
-      const members = await prisma.partyMember.findMany({
+      const allMembers = await prisma.partyMember.findMany({
         where: { status: 'active' },
         orderBy: { displayOrder: 'asc' }
       });
+      const members = allMembers.filter(m => isMemberActiveInQuarter(m, quarter.startDate));
 
       const workScores = await prisma.partyWorkScore.findMany({
         where: { quarterId: Number(quarterId) }
