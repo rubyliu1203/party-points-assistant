@@ -1,0 +1,20 @@
+{
+  "name": "party-points-assistant",
+  "version": "1.0.0",
+  "description": "党员党务积分助手 - 一键启动",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "install:all": "npm install && cd apps/server && npm install && cd ../web && npm install",
+    "dev": "concurrently --kill-others-on-fail --prefix-colors cyan,magenta \"npm:dev:server\" \"npm:dev:web\"",
+    "dev:server": "cd apps/server && npx tsx src/app.ts",
+    "dev:web": "cd apps/web && npm run dev",
+    "build": "cd apps/server && npm run build && cd ../web && npm run build",
+    "start": "cd apps/server && npm start"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

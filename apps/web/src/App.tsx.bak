@@ -1,0 +1,34 @@
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { ConfigProvider, theme } from 'antd';
+import zhCN from 'antd/locale/zh_CN';
+import AppLayout from './components/Layout';
+import MemberManagePage from './pages/MemberManage';
+import ScorePage from './pages/ScorePage';
+import DashboardPage from './pages/Dashboard';
+
+function App() {
+  return (
+    <ConfigProvider
+      locale={zhCN}
+      theme={{
+        algorithm: theme.defaultAlgorithm,
+        token: {
+          colorPrimary: '#cf1322',
+          borderRadius: 4,
+        },
+      }}
+    >
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<AppLayout />}>
+            <Route index element={<DashboardPage />} />
+            <Route path="members" element={<MemberManagePage />} />
+            <Route path="scores" element={<ScorePage />} />
+          </Route>
+        </Routes>
+      </BrowserRouter>
+    </ConfigProvider>
+  );
+}
+
+export default App;

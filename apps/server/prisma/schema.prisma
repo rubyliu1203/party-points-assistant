@@ -1,0 +1,196 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model PartyMember {
+  id            Int      @id @default(autoincrement())
+  name          String
+  partyPositions String   @default("[]")
+  isPartyWorker Boolean  @default(false)
+  isManager     Boolean  @default(false)
+  status        String   @default("active")
+  joinDate      DateTime?
+  transferDate  DateTime?
+  displayOrder  Int      @default(0)
+  remark        String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  scores              PartyMemberScore[]
+  roleScoreDetails    RoleScoreDetail[]
+  bonusRecords        BonusRecord[]
+  deductionRecords    DeductionRecord[]
+  workScores          PartyWorkScore[]
+  workBonusDetails    PartyWorkBonusDetail[]
+
+  @@index([status])
+  @@index([displayOrder])
+}
+
+model Quarter {
+  id        Int      @id @default(autoincrement())
+  year      Int
+  quarter   Int
+  startDate DateTime
+  endDate   DateTime
+  status    String   @default("active")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  memberScores     PartyMemberScore[]
+  roleDetails      RoleScoreDetail[]
+  bonusRecords     BonusRecord[]
+  deductionRecords DeductionRecord[]
+  workScores       PartyWorkScore[]
+  workBonusDetails PartyWorkBonusDetail[]
+
+  @@unique([year, quarter])
+}
+
+model PartyMemberScore {
+  id                Int     @id @default(autoincrement())
+  partyMemberId     Int
+  quarterId         Int
+
+  politicalScore    Float   @default(20)
+  disciplineScore   Float   @default(20)
+  moralityScore     Float   @default(20)
+
+  performanceLevel  String?
+  performanceScore  Float?
+  roleScore         Float?
+
+  bonusScore        Float   @default(0)
+  deductionScore    Float   @default(0)
+
+  vetoStatus        String  @default("none")
+  totalScore        Float?
+
+  remark            String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  partyMember PartyMember @relation(fields: [partyMemberId], references: [id], onDelete: Cascade)
+  quarter     Quarter     @relation(fields: [quarterId], references: [id], onDelete: Cascade)
+
+  @@unique([partyMemberId, quarterId])
+  @@index([quarterId])
+  @@index([partyMemberId])
+}
+
+model RoleScoreDetail {
+  id                  Int     @id @default(autoincrement())
+  partyMemberId       Int
+  quarterId           Int
+  year                Int
+  month               Int
+
+  dim1HardBattle      Float   @default(0)
+  dim2TechShare       Float   @default(0)
+  dim3ShuangYou       Float   @default(0)
+  dim4Culture         Float   @default(0)
+  dim5ChinaStory      Float   @default(0)
+
+  isHardBattleLeader  Boolean @default(false)
+  isShuangYou         Boolean @default(false)
+  isTeamLeader        Boolean @default(false)
+  cultureBaseScore    Float?
+
+  monthlyTotal        Float?
+  remark              String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  partyMember PartyMember @relation(fields: [partyMemberId], references: [id], onDelete: Cascade)
+  quarter     Quarter     @relation(fields: [quarterId], references: [id], onDelete: Cascade)
+
+  @@unique([partyMemberId, quarterId, year, month])
+}
+
+model BonusRecord {
+  id              Int     @id @default(autoincrement())
+  partyMemberId   Int
+  quarterId       Int
+  level           Int
+  score           Float
+  source          String?
+  description     String?
+  awardDate       DateTime?
+  applyQuarterId  Int?
+  remark          String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  partyMember PartyMember @relation(fields: [partyMemberId], references: [id], onDelete: Cascade)
+  quarter     Quarter     @relation(fields: [quarterId], references: [id], onDelete: Cascade)
+}
+
+model DeductionRecord {
+  id              Int     @id @default(autoincrement())
+  partyMemberId   Int
+  quarterId       Int
+  type            Int
+  score           Float
+  occurrenceDate  DateTime?
+  description     String?
+  remark          String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  partyMember PartyMember @relation(fields: [partyMemberId], references: [id], onDelete: Cascade)
+  quarter     Quarter     @relation(fields: [quarterId], references: [id], onDelete: Cascade)
+}
+
+model PartyWorkScore {
+  id            Int     @id @default(autoincrement())
+  partyMemberId Int
+  quarterId     Int
+  year          Int
+  month         Int
+
+  baseScore     Float   @default(95)
+  baseBonus     Float   @default(0)
+  taskBonus     Float   @default(0)
+  deduction     Float   @default(0)
+  monthlyTotal  Float?
+
+  remark        String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  partyMember PartyMember @relation(fields: [partyMemberId], references: [id], onDelete: Cascade)
+  quarter     Quarter     @relation(fields: [quarterId], references: [id], onDelete: Cascade)
+
+  @@unique([partyMemberId, quarterId, year, month])
+}
+
+model PartyWorkBonusDetail {
+  id            Int     @id @default(autoincrement())
+  partyMemberId Int
+  quarterId     Int
+  year          Int
+  month         Int
+  type          String
+  content       String?
+  score         Float
+  remark        String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  partyMember PartyMember @relation(fields: [partyMemberId], references: [id], onDelete: Cascade)
+  quarter     Quarter     @relation(fields: [quarterId], references: [id], onDelete: Cascade)
+}
+
+model SystemSetting {
+  id          Int     @id @default(autoincrement())
+  key         String  @unique
+  value       String?
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
