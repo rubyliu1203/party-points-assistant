@@ -50,6 +50,10 @@ cd ../..
 
 > 首次双击可能需要：右键 → 打开 → 允许，因为系统会提示来自未知开发者。
 
+#### Windows 用户（推荐）
+
+双击项目根目录下的 **`启动.bat`** 文件即可一键启动前后端。
+
 #### 命令行启动
 
 ```bash
@@ -106,6 +110,8 @@ party-points-assistant/
 ├── data/                # SQLite 数据库（本地，git忽略）
 ├── template/            # Excel 导出模板
 ├── start.sh             # 一键启动脚本（Mac/Linux）
+├── 启动.command         # Mac 双击启动
+├── 启动.bat             # Windows 双击启动
 └── package.json         # 根目录 workspace 配置
 ```
 
