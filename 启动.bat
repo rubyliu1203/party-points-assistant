@@ -47,7 +47,8 @@ echo 🗄️  [4/4] 初始化数据库...
 cd apps\server
 
 :: 检查数据库文件是否存在
-set "DB_FILE=..\..\..\data\database.sqlite"
+:: 注意：从 apps\server 出发，..\..\ 指向项目根目录
+set "DB_FILE=..\..\data\database.sqlite"
 if not exist "%DB_FILE%" (
     echo    🌱 首次启动，正在创建数据库...
     call npx prisma db push --skip-generate

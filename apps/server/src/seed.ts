@@ -1,9 +1,16 @@
 import prisma from './utils/prisma';
 
 async function seed() {
-  console.log('🌱 开始初始化数据...');
+  console.log('🌱 开始检查数据...');
 
-  // 1. 创建系统设置
+  // 1. 如果 PartyMember 表已有记录，说明不是首次初始化，跳过所有数据插入
+  const existingMembers = await prisma.partyMember.count();
+  if (existingMembers > 0) {
+    console.log(`✅ 数据库已存在 ${existingMembers} 名党员，跳过初始化`);
+    return;
+  }
+
+  // 2. 创建系统设置
   await prisma.systemSetting.upsert({
     where: { key: 'department_name' },
     update: {},
@@ -14,7 +21,7 @@ async function seed() {
     }
   });
 
-  // 2. 导入党员名单（从Excel分析得到）
+  // 3. 导入党员名单（首次初始化时才执行）
   const members = [
     { name: '高伟', displayOrder: 1 },
     { name: '朱艳春', partyPositions: '["书记"]', isPartyWorker: false, displayOrder: 2 },
@@ -60,7 +67,7 @@ async function seed() {
 
   console.log(`✅ 已导入 ${members.length} 名党员`);
 
-  // 3. 创建2026年Q2季度
+  // 4. 创建2026年Q2季度
   const quarter = await prisma.quarter.upsert({
     where: { year_quarter: { year: 2026, quarter: 2 } },
     update: {},
@@ -75,7 +82,7 @@ async function seed() {
 
   console.log(`✅ 已创建季度: ${quarter.year}年Q${quarter.quarter}`);
 
-  // 4. 设置当前季度
+  // 5. 设置当前季度
   await prisma.systemSetting.upsert({
     where: { key: 'current_quarter_id' },
     update: { value: String(quarter.id) },
@@ -86,7 +93,7 @@ async function seed() {
     }
   });
 
-  // 5. 初始化党员积分记录
+  // 6. 初始化党员积分记录
   const allMembers = await prisma.partyMember.findMany();
   for (const member of allMembers) {
     await prisma.partyMemberScore.upsert({
@@ -112,7 +119,7 @@ async function seed() {
 
   console.log(`✅ 已初始化 ${allMembers.length} 名党员的积分记录`);
 
-  // 6. 初始化履职分明细（4月、5月、6月）
+  // 7. 初始化履职分明细（4月、5月、6月）
   const months = [4, 5, 6];
   for (const member of allMembers) {
     for (const month of months) {
