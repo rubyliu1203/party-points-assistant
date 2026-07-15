@@ -169,7 +169,9 @@ export const reportController = {
           const hScore = (levelScores[5] || 0) + (levelScores[6] || 0);
           ws3.getCell(`H${row}`).value = hScore || '';
           ws3.getCell(`I${row}`).value = levelScores[7] || ''; // 重大贡献
-          ws3.getCell(`J${row}`).value = ''; // 备注
+          // 备注：拼接所有加分记录的 description
+          const remarks = records.map(r => r.description).filter(Boolean);
+          ws3.getCell(`J${row}`).value = remarks.join('; ') || '';
         });
       }
 
