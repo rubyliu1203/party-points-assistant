@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
-import { Table, Button, Modal, Form, Select, Input, InputNumber, Tag, Space, message, DatePicker } from 'antd';
+import { Table, Button, Modal, Form, Select, Input, InputNumber, Space, message } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { bonusApi } from '../api/bonus';
 import { memberApi } from '../api/members';
@@ -8,10 +8,11 @@ import { BONUS_LEVELS } from '../utils/constants';
 
 interface OutletContext {
   currentQuarter: { id: number; year: number; quarter: number } | null;
+  isArchived: boolean;
 }
 
 function BonusPage() {
-  const { currentQuarter } = useOutletContext<OutletContext>();
+  const { currentQuarter, isArchived } = useOutletContext<OutletContext>();
   const [records, setRecords] = useState<any[]>([]);
   const [members, setMembers] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -123,8 +124,8 @@ function BonusPage() {
       width: 150,
       render: (_: any, record: any) => (
         <Space>
-          <Button type="link" icon={<EditOutlined />} onClick={() => handleEdit(record)}>编辑</Button>
-          <Button type="link" danger icon={<DeleteOutlined />} onClick={() => handleDelete(record.id)}>删除</Button>
+          <Button type="link" icon={<EditOutlined />} onClick={() => handleEdit(record)} disabled={isArchived}>编辑</Button>
+          <Button type="link" danger icon={<DeleteOutlined />} onClick={() => handleDelete(record.id)} disabled={isArchived}>删除</Button>
         </Space>
       ),
     },
@@ -134,7 +135,7 @@ function BonusPage() {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
         <h2 style={{ margin: 0 }}>加分台账</h2>
-        <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>新增加分</Button>
+        <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd} disabled={isArchived}>新增加分</Button>
       </div>
 
       <Table columns={columns} dataSource={records} rowKey="id" loading={loading} pagination={false} size="small" bordered />

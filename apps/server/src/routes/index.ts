@@ -20,6 +20,7 @@ router.get('/quarters', quarterController.getQuarters);
 router.post('/quarters', quarterController.createQuarter);
 router.get('/quarters/current', quarterController.getCurrentQuarter);
 router.put('/quarters/current', quarterController.setCurrentQuarter);
+router.post('/quarters/:quarterId/archive', quarterController.archiveQuarter);
 
 // 党员积分
 router.get('/scores', scoreController.getScores);

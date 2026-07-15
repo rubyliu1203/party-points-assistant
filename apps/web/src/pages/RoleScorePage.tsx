@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { Table, Button, InputNumber, Tag, Space, message, Switch, Tooltip } from 'antd';
-import { ReloadOutlined, EditOutlined, SaveOutlined } from '@ant-design/icons';
+import { ReloadOutlined } from '@ant-design/icons';
 import { scoreApi } from '../api/scores';
 import { memberApi } from '../api/members';
-import { QUARTER_MONTHS } from '../utils/constants';
+
 
 interface OutletContext {
   currentQuarter: { id: number; year: number; quarter: number } | null;
+  isArchived: boolean;
 }
 
 interface MemberWithDetails {
@@ -51,10 +52,10 @@ const DIM3_QUARTER_SCORES: Record<number, { shuangYou: number; teamLeader: numbe
 };
 
 function RoleScorePage() {
-  const { currentQuarter } = useOutletContext<OutletContext>();
+  const { currentQuarter, isArchived } = useOutletContext<OutletContext>();
   const [memberDetails, setMemberDetails] = useState<MemberWithDetails[]>([]);
   const [loading, setLoading] = useState(false);
-  const [editingMember, setEditingMember] = useState<number | null>(null);
+
 
   useEffect(() => {
     if (currentQuarter?.id) {
@@ -184,14 +185,6 @@ function RoleScorePage() {
     }
   };
 
-  // 获取当前季度的月份
-  const getMonths = () => {
-    if (!currentQuarter) return [];
-    return QUARTER_MONTHS[currentQuarter.quarter] || [];
-  };
-
-  const months = getMonths();
-
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16, alignItems: 'center' }}>
@@ -255,13 +248,14 @@ function RoleScorePage() {
                           <Space direction="vertical" size="small" style={{ width: '100%' }}>
                             <Space>
                               <span style={{ fontWeight: 'bold', color: '#cf1322' }}>{calculateDim1(member, detail)}分</span>
-                              {member.isManager && <Tag color="gold" size="small">管理层</Tag>}
+                              {member.isManager && <Tag color="gold">管理层</Tag>}
                             </Space>
                             <Space>
                               <Switch
                                 checked={detail.isHardBattleLeader}
                                 onChange={() => handleToggleHardBattle(member, detail)}
                                 size="small"
+                                disabled={isArchived}
                               />
                               <span style={{ fontSize: 12 }}>攻坚队责任党员</span>
                             </Space>
@@ -275,6 +269,7 @@ function RoleScorePage() {
                             max={4}
                             step={1}
                             size="small"
+                             disabled={isArchived}
                             style={{ width: 60 }}
                           />
                         </td>
@@ -282,13 +277,14 @@ function RoleScorePage() {
                           <Space direction="vertical" size="small" style={{ width: '100%' }}>
                             <Space>
                               <span style={{ fontWeight: 'bold', color: '#cf1322' }}>{calculateDim3(member, detail)}分</span>
-                              {member.isManager && <Tag color="gold" size="small">管理层</Tag>}
+                              {member.isManager && <Tag color="gold">管理层</Tag>}
                             </Space>
                             <Space>
                               <Switch
                                 checked={detail.isShuangYou}
                                 onChange={() => handleToggleShuangYou(member, detail)}
                                 size="small"
+                                disabled={isArchived}
                               />
                               <span style={{ fontSize: 12 }}>双优党员</span>
                             </Space>
@@ -297,6 +293,7 @@ function RoleScorePage() {
                                 checked={detail.isTeamLeader}
                                 onChange={() => handleToggleTeamLeader(member, detail)}
                                 size="small"
+                                disabled={isArchived}
                               />
                               <span style={{ fontSize: 12 }}>团队长</span>
                             </Space>
@@ -310,6 +307,7 @@ function RoleScorePage() {
                             max={4}
                             step={0.1}
                             size="small"
+                            disabled={isArchived}
                             style={{ width: 60 }}
                           />
                         </td>
@@ -321,6 +319,7 @@ function RoleScorePage() {
                             max={4}
                             step={1}
                             size="small"
+                            disabled={isArchived}
                             style={{ width: 60 }}
                           />
                         </td>

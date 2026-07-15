@@ -33,14 +33,16 @@ model PartyMember {
 }
 
 model Quarter {
-  id        Int      @id @default(autoincrement())
-  year      Int
-  quarter   Int
-  startDate DateTime
-  endDate   DateTime
-  status    String   @default("active")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id         Int       @id @default(autoincrement())
+  year       Int
+  quarter    Int
+  startDate  DateTime
+  endDate    DateTime
+  status     String    @default("active")
+  isArchived Boolean   @default(false)
+  archivedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 
   memberScores     PartyMemberScore[]
   roleDetails      RoleScoreDetail[]
@@ -193,4 +195,125 @@ model SystemSetting {
   description String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+// ===== 归档快照表 =====
+
+model ArchivedPartyMemberScore {
+  id                Int     @id @default(autoincrement())
+  partyMemberId     Int
+  quarterId         Int
+
+  politicalScore    Float
+  disciplineScore   Float
+  moralityScore     Float
+
+  performanceLevel  String?
+  performanceScore  Float?
+  roleScore         Float?
+
+  bonusScore        Float
+  deductionScore    Float
+
+  vetoStatus        String
+  totalScore        Float?
+
+  remark            String?
+  archivedAt        DateTime @default(now())
+
+  @@unique([partyMemberId, quarterId])
+  @@index([quarterId])
+  @@index([partyMemberId])
+}
+
+model ArchivedRoleScoreDetail {
+  id                  Int     @id @default(autoincrement())
+  partyMemberId       Int
+  quarterId           Int
+  year                Int
+  month               Int
+
+  dim1HardBattle      Float
+  dim2TechShare       Float
+  dim3ShuangYou       Float
+  dim4Culture         Float
+  dim5ChinaStory      Float
+
+  isHardBattleLeader  Boolean
+  isShuangYou         Boolean
+  isTeamLeader        Boolean
+  cultureBaseScore    Float?
+
+  monthlyTotal        Float?
+  remark              String?
+  archivedAt          DateTime @default(now())
+
+  @@unique([partyMemberId, quarterId, year, month])
+}
+
+model ArchivedBonusRecord {
+  id              Int     @id @default(autoincrement())
+  partyMemberId   Int
+  quarterId       Int
+  level           Int
+  score           Float
+  source          String?
+  description     String?
+  awardDate       DateTime?
+  applyQuarterId  Int?
+  remark          String?
+  archivedAt      DateTime @default(now())
+
+  @@index([quarterId])
+  @@index([partyMemberId])
+}
+
+model ArchivedDeductionRecord {
+  id              Int     @id @default(autoincrement())
+  partyMemberId   Int
+  quarterId       Int
+  type            Int
+  score           Float
+  occurrenceDate  DateTime?
+  description     String?
+  remark          String?
+  archivedAt      DateTime @default(now())
+
+  @@index([quarterId])
+  @@index([partyMemberId])
+}
+
+model ArchivedPartyWorkScore {
+  id            Int     @id @default(autoincrement())
+  partyMemberId Int
+  quarterId     Int
+  year          Int
+  month         Int
+
+  baseScore     Float
+  baseBonus     Float
+  taskBonus     Float
+  deduction     Float
+  monthlyTotal  Float?
+
+  remark        String?
+  archivedAt    DateTime @default(now())
+
+  @@unique([partyMemberId, quarterId, year, month])
+}
+
+model ArchivedPartyWorkBonusDetail {
+  id            Int     @id @default(autoincrement())
+  partyMemberId Int
+  quarterId     Int
+  year          Int
+  month         Int
+  type          String
+  content       String?
+  score         Float
+  remark        String?
+  archivedAt    DateTime @default(now())
+
+  @@index([quarterId])
+  @@index([partyMemberId])
 }

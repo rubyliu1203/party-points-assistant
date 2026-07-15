@@ -7,6 +7,8 @@ export interface Quarter {
   startDate: string;
   endDate: string;
   status: string;
+  isArchived: boolean;
+  archivedAt: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -22,5 +24,8 @@ export const quarterApi = {
     api.get('/quarters/current'),
 
   setCurrentQuarter: (quarterId: number) =>
-    api.put('/quarters/current', { quarterId })
+    api.put('/quarters/current', { quarterId }),
+
+  archiveQuarter: (quarterId: number) =>
+    api.post(`/quarters/${quarterId}/archive`, {})
 };

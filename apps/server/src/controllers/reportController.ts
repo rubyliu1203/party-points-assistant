@@ -14,16 +14,17 @@ export const reportController = {
   async exportScoreSummary(req: Request, res: Response) {
     try {
       const { quarterId } = req.query;
+      const qid = Number(quarterId);
       if (!quarterId) {
         return res.status(400).json({ code: 400, message: '缺少quarterId参数' });
       }
 
-      const quarter = await prisma.quarter.findUnique({
-        where: { id: Number(quarterId) }
-      });
+      const quarter = await prisma.quarter.findUnique({ where: { id: qid } });
       if (!quarter) {
         return res.status(404).json({ code: 404, message: '季度不存在' });
       }
+
+      const isArchived = quarter.isArchived;
 
       // 使用 exceljs 读取模板（完整保留格式）
       const workbook = new ExcelJS.Workbook();
@@ -36,16 +37,24 @@ export const reportController = {
       });
       const members = allMembers.filter(m => isMemberActiveInQuarter(m, quarter.startDate));
 
-      // 查询数据
-      const scores = await prisma.partyMemberScore.findMany({
-        where: { quarterId: Number(quarterId) },
-        include: { partyMember: true }
-      });
+      // 查询数据（归档季度从快照表读取）
+      let scores: any[], roleDetails: any[], bonusRecords: any[], deductionRecords: any[];
+      if (isArchived) {
+        scores = await prisma.archivedPartyMemberScore.findMany({ where: { quarterId: qid } });
+        roleDetails = await prisma.archivedRoleScoreDetail.findMany({ where: { quarterId: qid } });
+        bonusRecords = await prisma.archivedBonusRecord.findMany({ where: { quarterId: qid } });
+        deductionRecords = await prisma.archivedDeductionRecord.findMany({ where: { quarterId: qid } });
+      } else {
+        scores = await prisma.partyMemberScore.findMany({
+          where: { quarterId: qid },
+          include: { partyMember: true }
+        });
+        roleDetails = await prisma.roleScoreDetail.findMany({ where: { quarterId: qid } });
+        bonusRecords = await prisma.bonusRecord.findMany({ where: { quarterId: qid } });
+        deductionRecords = await prisma.deductionRecord.findMany({ where: { quarterId: qid } });
+      }
       const scoreMap = new Map(scores.map(s => [s.partyMemberId, s]));
 
-      const roleDetails = await prisma.roleScoreDetail.findMany({
-        where: { quarterId: Number(quarterId) }
-      });
       const roleDetailMap = new Map<number, Map<number, any>>();
       roleDetails.forEach(d => {
         if (!roleDetailMap.has(d.partyMemberId)) {
@@ -54,18 +63,12 @@ export const reportController = {
         roleDetailMap.get(d.partyMemberId)!.set(d.month, d);
       });
 
-      const bonusRecords = await prisma.bonusRecord.findMany({
-        where: { quarterId: Number(quarterId) }
-      });
       const bonusMap = new Map<number, any[]>();
       bonusRecords.forEach(b => {
         if (!bonusMap.has(b.partyMemberId)) bonusMap.set(b.partyMemberId, []);
         bonusMap.get(b.partyMemberId)!.push(b);
       });
 
-      const deductionRecords = await prisma.deductionRecord.findMany({
-        where: { quarterId: Number(quarterId) }
-      });
       const deductionMap = new Map<number, any[]>();
       deductionRecords.forEach(d => {
         if (!deductionMap.has(d.partyMemberId)) deductionMap.set(d.partyMemberId, []);
@@ -218,16 +221,17 @@ export const reportController = {
   async exportWorkScoreSummary(req: Request, res: Response) {
     try {
       const { quarterId } = req.query;
+      const qid = Number(quarterId);
       if (!quarterId) {
         return res.status(400).json({ code: 400, message: '缺少quarterId参数' });
       }
 
-      const quarter = await prisma.quarter.findUnique({
-        where: { id: Number(quarterId) }
-      });
+      const quarter = await prisma.quarter.findUnique({ where: { id: qid } });
       if (!quarter) {
         return res.status(404).json({ code: 404, message: '季度不存在' });
       }
+
+      const isArchived = quarter.isArchived;
 
       const workbook = new ExcelJS.Workbook();
       await workbook.xlsx.readFile(WORK_SCORE_TEMPLATE_PATH);
@@ -238,9 +242,9 @@ export const reportController = {
       });
       const members = allMembers.filter(m => isMemberActiveInQuarter(m, quarter.startDate));
 
-      const workScores = await prisma.partyWorkScore.findMany({
-        where: { quarterId: Number(quarterId) }
-      });
+      const workScores = isArchived
+        ? await prisma.archivedPartyWorkScore.findMany({ where: { quarterId: qid } })
+        : await prisma.partyWorkScore.findMany({ where: { quarterId: qid } });
 
       const ws = workbook.getWorksheet('季度汇总');
       if (ws) {
@@ -312,9 +316,13 @@ export const reportController = {
   async exportPublicScore(req: Request, res: Response) {
     try {
       const { quarterId, type } = req.query;
+      const qid = Number(quarterId);
       if (!quarterId) {
         return res.status(400).json({ code: 400, message: '缺少quarterId参数' });
       }
+
+      const quarter = await prisma.quarter.findUnique({ where: { id: qid } });
+      const isArchived = quarter?.isArchived ?? false;
 
       const members = await prisma.partyMember.findMany({
         where: { status: 'active' },
@@ -324,9 +332,9 @@ export const reportController = {
       let data: any[] = [];
 
       if (type === 'work_score') {
-        const workScores = await prisma.partyWorkScore.findMany({
-          where: { quarterId: Number(quarterId) }
-        });
+        const workScores = isArchived
+          ? await prisma.archivedPartyWorkScore.findMany({ where: { quarterId: qid } })
+          : await prisma.partyWorkScore.findMany({ where: { quarterId: qid } });
 
         const memberMap = new Map();
         workScores.forEach(s => {
@@ -350,9 +358,9 @@ export const reportController = {
           };
         });
       } else {
-        const scores = await prisma.partyMemberScore.findMany({
-          where: { quarterId: Number(quarterId) }
-        });
+        const scores = isArchived
+          ? await prisma.archivedPartyMemberScore.findMany({ where: { quarterId: qid } })
+          : await prisma.partyMemberScore.findMany({ where: { quarterId: qid } });
 
         const scoreMap = new Map(scores.map(s => [s.partyMemberId, s]));
 

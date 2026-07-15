@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Layout, Menu, Select, Space, Typography, Button, Modal, Form, InputNumber, message } from 'antd';
+import { Layout, Menu, Select, Space, Typography, Button, Modal, Form, InputNumber, message, Popconfirm, Tag } from 'antd';
 import {
   TeamOutlined,
   PieChartOutlined,
@@ -7,9 +7,7 @@ import {
   SettingOutlined,
   PlusOutlined,
   FileTextOutlined,
-  RiseOutlined,
-  FallOutlined,
-  StarOutlined,
+  LockOutlined,
 } from '@ant-design/icons';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { quarterApi } from '../api/quarters';
@@ -21,6 +19,7 @@ interface Quarter {
   id: number;
   year: number;
   quarter: number;
+  isArchived: boolean;
 }
 
 const menuItems = [
@@ -113,6 +112,19 @@ function AppLayout() {
     }
   };
 
+  const handleArchiveQuarter = async () => {
+    if (!currentQuarter) return;
+    try {
+      const res: any = await quarterApi.archiveQuarter(currentQuarter.id);
+      if (res.code === 200) {
+        message.success(res.message);
+        loadQuarters();
+      }
+    } catch (error: any) {
+      message.error(error.response?.data?.message || '归档失败');
+    }
+  };
+
   return (
     <Layout style={{ minHeight: '100vh' }}>
       <Sider theme="light" style={{ boxShadow: '2px 0 8px rgba(0,0,0,0.06)' }}>
@@ -155,10 +167,26 @@ function AppLayout() {
             >
               {quarters.map(q => (
                 <Select.Option key={q.id} value={q.id}>
-                  {q.year}年 Q{q.quarter}
+                  {q.year}年 Q{q.quarter} {q.isArchived ? '【已归档】' : ''}
                 </Select.Option>
               ))}
             </Select>
+            {currentQuarter?.isArchived && (
+              <Tag color="red" icon={<LockOutlined />}>已归档（只读）</Tag>
+            )}
+            {!currentQuarter?.isArchived && (
+              <Popconfirm
+                title="确认归档？"
+                description="归档后该季度数据将冻结，只允许查看，不允许编辑。"
+                onConfirm={handleArchiveQuarter}
+                okText="归档"
+                cancelText="取消"
+              >
+                <Button type="primary" danger size="small">
+                  归档季度
+                </Button>
+              </Popconfirm>
+            )}
             <Button 
               type="link" 
               icon={<PlusOutlined />}
@@ -175,7 +203,7 @@ function AppLayout() {
           </Space>
         </Header>
         <Content style={{ margin: 24, padding: 24, background: '#fff', borderRadius: 8 }}>
-          <Outlet context={{ currentQuarter }} />
+          <Outlet context={{ currentQuarter, isArchived: currentQuarter?.isArchived ?? false }} />
         </Content>
       </Layout>
       <Modal

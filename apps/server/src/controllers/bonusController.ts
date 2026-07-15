@@ -2,30 +2,57 @@ import { Request, Response } from 'express';
 import prisma from '../utils/prisma';
 import scoreCalculationService from '../services/ScoreCalculationService';
 import { isMemberActiveInQuarter } from '../utils/initScores';
+import { checkQuarterArchived } from './quarterController';
 
 export const bonusController = {
-  // 获取加分记录
+  // 获取加分记录（归档季度从快照表读取）
   async getBonusRecords(req: Request, res: Response) {
     try {
       const { quarterId, memberId } = req.query;
-      const where: any = {};
+      const qid = quarterId ? Number(quarterId) : null;
+      const mid = memberId ? Number(memberId) : null;
 
-      if (quarterId) where.quarterId = Number(quarterId);
-      if (memberId) where.partyMemberId = Number(memberId);
+      let isArchived = false;
+      if (qid) {
+        const quarter = await prisma.quarter.findUnique({ where: { id: qid } });
+        isArchived = quarter?.isArchived ?? false;
+      }
 
-      let records = await prisma.bonusRecord.findMany({
-        where,
-        include: { partyMember: true },
-        orderBy: { createdAt: 'desc' }
-      });
-
-      // 按转入/转出时间过滤
-      if (quarterId) {
-        const quarter = await prisma.quarter.findUnique({
-          where: { id: Number(quarterId) }
+      let records: any[];
+      if (isArchived) {
+        const where: any = { quarterId: qid };
+        if (mid) where.partyMemberId = mid;
+        records = await prisma.archivedBonusRecord.findMany({
+          where,
+          orderBy: { archivedAt: 'desc' }
         });
-        if (quarter) {
-          records = records.filter(r => isMemberActiveInQuarter(r.partyMember, quarter.startDate));
+        // 补充党员信息
+        const members = await prisma.partyMember.findMany();
+        records = records.map(r => ({
+          ...r,
+          partyMember: members.find(m => m.id === r.partyMemberId) || null
+        }));
+        // 过滤转入/转出
+        if (qid) {
+          const quarter = await prisma.quarter.findUnique({ where: { id: qid } });
+          if (quarter) {
+            records = records.filter(r => isMemberActiveInQuarter(r.partyMember, quarter.startDate));
+          }
+        }
+      } else {
+        const where: any = {};
+        if (qid) where.quarterId = qid;
+        if (mid) where.partyMemberId = mid;
+        records = await prisma.bonusRecord.findMany({
+          where,
+          include: { partyMember: true },
+          orderBy: { createdAt: 'desc' }
+        });
+        if (qid) {
+          const quarter = await prisma.quarter.findUnique({ where: { id: qid } });
+          if (quarter) {
+            records = records.filter(r => isMemberActiveInQuarter(r.partyMember, quarter.startDate));
+          }
         }
       }
 
@@ -39,7 +66,10 @@ export const bonusController = {
   async createBonusRecord(req: Request, res: Response) {
     try {
       const data = req.body;
-      
+      if (await checkQuarterArchived(data.quarterId)) {
+        return res.status(403).json({ code: 403, message: '该季度已归档，不允许添加' });
+      }
+
       const record = await prisma.bonusRecord.create({
         data: {
           partyMemberId: data.partyMemberId,
@@ -72,6 +102,12 @@ export const bonusController = {
       const { id } = req.params;
       const data = req.body;
 
+      // 先查出记录获取 quarterId
+      const existing = await prisma.bonusRecord.findUnique({ where: { id: Number(id) } });
+      if (existing && await checkQuarterArchived(existing.quarterId)) {
+        return res.status(403).json({ code: 403, message: '该季度已归档，不允许修改' });
+      }
+
       const record = await prisma.bonusRecord.update({
         where: { id: Number(id) },
         data: {
@@ -100,10 +136,14 @@ export const bonusController = {
   async deleteBonusRecord(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      
+
       const record = await prisma.bonusRecord.findUnique({
         where: { id: Number(id) }
       });
+
+      if (record && await checkQuarterArchived(record.quarterId)) {
+        return res.status(403).json({ code: 403, message: '该季度已归档，不允许删除' });
+      }
 
       if (!record) {
         return res.status(404).json({ code: 404, message: '记录不存在' });
@@ -127,28 +167,52 @@ export const bonusController = {
 };
 
 export const deductionController = {
-  // 获取扣分记录
+  // 获取扣分记录（归档季度从快照表读取）
   async getDeductionRecords(req: Request, res: Response) {
     try {
       const { quarterId, memberId } = req.query;
-      const where: any = {};
+      const qid = quarterId ? Number(quarterId) : null;
+      const mid = memberId ? Number(memberId) : null;
 
-      if (quarterId) where.quarterId = Number(quarterId);
-      if (memberId) where.partyMemberId = Number(memberId);
+      let isArchived = false;
+      if (qid) {
+        const quarter = await prisma.quarter.findUnique({ where: { id: qid } });
+        isArchived = quarter?.isArchived ?? false;
+      }
 
-      let records = await prisma.deductionRecord.findMany({
-        where,
-        include: { partyMember: true },
-        orderBy: { createdAt: 'desc' }
-      });
-
-      // 按转入/转出时间过滤
-      if (quarterId) {
-        const quarter = await prisma.quarter.findUnique({
-          where: { id: Number(quarterId) }
+      let records: any[];
+      if (isArchived) {
+        const where: any = { quarterId: qid };
+        if (mid) where.partyMemberId = mid;
+        records = await prisma.archivedDeductionRecord.findMany({
+          where,
+          orderBy: { archivedAt: 'desc' }
         });
-        if (quarter) {
-          records = records.filter(r => isMemberActiveInQuarter(r.partyMember, quarter.startDate));
+        const members = await prisma.partyMember.findMany();
+        records = records.map(r => ({
+          ...r,
+          partyMember: members.find(m => m.id === r.partyMemberId) || null
+        }));
+        if (qid) {
+          const quarter = await prisma.quarter.findUnique({ where: { id: qid } });
+          if (quarter) {
+            records = records.filter(r => isMemberActiveInQuarter(r.partyMember, quarter.startDate));
+          }
+        }
+      } else {
+        const where: any = {};
+        if (qid) where.quarterId = qid;
+        if (mid) where.partyMemberId = mid;
+        records = await prisma.deductionRecord.findMany({
+          where,
+          include: { partyMember: true },
+          orderBy: { createdAt: 'desc' }
+        });
+        if (qid) {
+          const quarter = await prisma.quarter.findUnique({ where: { id: qid } });
+          if (quarter) {
+            records = records.filter(r => isMemberActiveInQuarter(r.partyMember, quarter.startDate));
+          }
         }
       }
 
@@ -162,7 +226,10 @@ export const deductionController = {
   async createDeductionRecord(req: Request, res: Response) {
     try {
       const data = req.body;
-      
+      if (await checkQuarterArchived(data.quarterId)) {
+        return res.status(403).json({ code: 403, message: '该季度已归档，不允许添加' });
+      }
+
       const record = await prisma.deductionRecord.create({
         data: {
           partyMemberId: data.partyMemberId,
@@ -193,6 +260,11 @@ export const deductionController = {
       const { id } = req.params;
       const data = req.body;
 
+      const existing = await prisma.deductionRecord.findUnique({ where: { id: Number(id) } });
+      if (existing && await checkQuarterArchived(existing.quarterId)) {
+        return res.status(403).json({ code: 403, message: '该季度已归档，不允许修改' });
+      }
+
       const record = await prisma.deductionRecord.update({
         where: { id: Number(id) },
         data: {
@@ -220,10 +292,14 @@ export const deductionController = {
   async deleteDeductionRecord(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      
+
       const record = await prisma.deductionRecord.findUnique({
         where: { id: Number(id) }
       });
+
+      if (record && await checkQuarterArchived(record.quarterId)) {
+        return res.status(403).json({ code: 403, message: '该季度已归档，不允许删除' });
+      }
 
       if (!record) {
         return res.status(404).json({ code: 404, message: '记录不存在' });

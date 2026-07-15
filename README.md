@@ -22,39 +22,25 @@ git clone git@github.com:rubyliu1203/party-points-assistant.git
 cd party-points-assistant
 ```
 
-### 2. 安装依赖
+### 2. 双击启动（推荐）
 
-```bash
-# 安装根目录依赖 + 前后端依赖
-npm run install:all
-```
+**首次启动自动完成：安装依赖 → 初始化数据库 → 启动服务**
 
-### 3. 初始化数据库
-
-```bash
-cd apps/server
-# 推送数据库模型
-npx prisma db push
-# 生成 Prisma Client
-npx prisma generate
-# 导入种子数据（26名党员 + 2026年Q2示例数据）
-npx tsx src/seed.ts
-cd ../..
-```
-
-### 4. 启动服务
-
-#### Mac 用户（推荐）
+#### Mac 用户
 
 双击项目根目录下的 **`启动.command`** 文件即可一键启动前后端。
 
 > 首次双击可能需要：右键 → 打开 → 允许，因为系统会提示来自未知开发者。
 
-#### Windows 用户（推荐）
+#### Windows 用户
 
 双击项目根目录下的 **`启动.bat`** 文件即可一键启动前后端。
 
-#### 命令行启动
+启动后访问：
+- 前端: http://localhost:3000
+- 后端 API: http://localhost:3001/api/v1
+
+### 3. 命令行启动（可选）
 
 ```bash
 # 方式一：一键启动前后端（Mac/Linux）
@@ -70,11 +56,7 @@ cd apps/server && npm run dev
 cd apps/web && npm run dev
 ```
 
-启动后访问：
-- 前端: http://localhost:3000
-- 后端 API: http://localhost:3001/api/v1
-
-### 5. 生产环境构建
+### 4. 生产环境构建
 
 ```bash
 # 构建后端 + 前端
@@ -128,7 +110,7 @@ party-points-assistant/
 
 ## 注意事项
 
-1. **首次运行** 必须执行 `npm run install:all` 和 `npx prisma db push`
+1. **首次启动** 双击 `启动.command`（Mac）或 `启动.bat`（Windows）会自动完成依赖安装和数据库初始化
 2. **数据库** 使用 SQLite，数据文件在 `data/database.sqlite`（已加入 .gitignore）
 3. **Excel 模板** 文件在 `template/` 目录下，导出时依赖这些模板
 4. **党员时间规则**：

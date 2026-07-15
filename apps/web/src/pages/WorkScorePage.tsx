@@ -13,6 +13,7 @@ import { memberApi } from '../api/members';
 
 interface OutletContext {
   currentQuarter: { id: number; year: number; quarter: number } | null;
+  isArchived: boolean;
 }
 
 interface MemberMonthly {
@@ -22,7 +23,7 @@ interface MemberMonthly {
 }
 
 function WorkScorePage() {
-  const { currentQuarter } = useOutletContext<OutletContext>();
+  const { currentQuarter, isArchived } = useOutletContext<OutletContext>();
   const [activeTab, setActiveTab] = useState('summary');
   const [summaryData, setSummaryData] = useState<any[]>([]);
   const [monthlyData, setMonthlyData] = useState<MemberMonthly[]>([]);
@@ -125,8 +126,6 @@ function WorkScorePage() {
     };
     return map[currentQuarter.quarter] || [];
   };
-
-  const getMonthLabel = (month: number) => `${month}月`;
 
   const handleRecalculate = async () => {
     if (!currentQuarter?.id) return;
@@ -306,6 +305,7 @@ function WorkScorePage() {
                 e.stopPropagation();
                 openAddModal(record.member.id, month);
               }}
+              disabled={isArchived}
             />
           </div>
         );
@@ -356,6 +356,7 @@ function WorkScorePage() {
                         type="primary"
                         icon={<PlusOutlined />}
                         onClick={() => openAddModal(record.member.id, month)}
+                        disabled={isArchived}
                       >
                         加分
                       </Button>
@@ -384,12 +385,12 @@ function WorkScorePage() {
                         {details.map((d: any) => (
                           <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '2px 0' }}>
                             <span>
-                              <Tag size="small">{d.type}</Tag>
+                              <Tag>{d.type}</Tag>
                               <span style={{ color: '#1890ff' }}>+{d.score}</span>
                               {d.content && <span style={{ color: '#999', marginLeft: 4 }}>{d.content}</span>}
                             </span>
                             <Popconfirm title="删除这条加分？" onConfirm={() => handleDeleteDetail(d.id)}>
-                              <Button size="small" type="link" danger icon={<DeleteOutlined />} style={{ padding: 0 }} />
+                              <Button size="small" type="link" danger icon={<DeleteOutlined />} style={{ padding: 0 }} disabled={isArchived} />
                             </Popconfirm>
                           </div>
                         ))}
@@ -452,7 +453,7 @@ function WorkScorePage() {
       width: 70,
       render: (_: any, record: any) => (
         <Popconfirm title="确认删除？" onConfirm={() => handleDeleteDetail(record.id)}>
-          <Button size="small" type="link" danger icon={<DeleteOutlined />}>删除</Button>
+          <Button size="small" type="link" danger icon={<DeleteOutlined />} disabled={isArchived}>删除</Button>
         </Popconfirm>
       )
     }
@@ -470,7 +471,7 @@ function WorkScorePage() {
           )}
         </h2>
         <Space>
-          <Button icon={<ReloadOutlined />} onClick={handleRecalculate} loading={loading} size="small">
+          <Button icon={<ReloadOutlined />} onClick={handleRecalculate} loading={loading} size="small" disabled={isArchived}>
             重新计算基础加分
           </Button>
           <Button
@@ -481,6 +482,7 @@ function WorkScorePage() {
               setBatchModalVisible(true);
             }}
             size="small"
+            disabled={isArchived}
           >
             批量添加分享心得
           </Button>

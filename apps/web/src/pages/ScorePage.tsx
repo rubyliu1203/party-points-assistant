@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import {
-  Table, Button, Modal, Form, Select, Tag, Space, message, Tooltip, Switch
+  Table, Button, Modal, Form, Select, Tag, Space, message, Tooltip
 } from 'antd';
 import { ReloadOutlined, EditOutlined, FileExcelOutlined, EyeOutlined, EyeInvisibleOutlined } from '@ant-design/icons';
 import { scoreApi } from '../api/scores';
 import type { PartyMemberScore } from '../api/scores';
-import { quarterApi } from '../api/quarters';
+
 import { PERFORMANCE_LEVELS } from '../utils/constants';
 
 interface OutletContext {
