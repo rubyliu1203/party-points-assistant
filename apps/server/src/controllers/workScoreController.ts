@@ -388,5 +388,274 @@ export const workScoreController = {
     } catch (error: any) {
       res.status(500).json({ code: 500, message: error.message });
     }
+  },
+
+  // 公开接口：获取党务积分季度汇总（无需认证，只读）
+  async getPublicWorkScores(req: Request, res: Response) {
+    try {
+      const { quarterId } = req.params;
+      const qid = Number(quarterId);
+
+      const quarter = await prisma.quarter.findUnique({ where: { id: qid } });
+      if (!quarter) {
+        return res.status(404).json({ code: 404, message: '季度不存在' });
+      }
+
+      const allMembers = await prisma.partyMember.findMany({
+        where: { status: 'active' },
+        orderBy: { displayOrder: 'asc' }
+      });
+
+      // 按转入/转出时间过滤
+      const members = allMembers.filter(m => isMemberActiveInQuarter(m, quarter.startDate));
+
+      const isArchived = quarter.isArchived;
+      const workScores = isArchived
+        ? await prisma.archivedPartyWorkScore.findMany({ where: { quarterId: qid } })
+        : await prisma.partyWorkScore.findMany({ where: { quarterId: qid } });
+
+      // 按党员分组计算季度汇总
+      const results = members.map((member, index) => {
+        const memberScores = workScores.filter(s => s.partyMemberId === member.id);
+        const positions = JSON.parse(member.partyPositions || '[]');
+        
+        const quarterBaseScore = 95;
+        const quarterBaseBonus = memberScores.reduce((sum, s) => sum + s.baseBonus, 0);
+        const quarterTaskBonus = memberScores.reduce((sum, s) => sum + s.taskBonus, 0);
+        const quarterDeduction = memberScores.reduce((sum, s) => sum + s.deduction, 0);
+        const quarterTotal = quarterBaseScore + quarterBaseBonus + quarterTaskBonus - quarterDeduction;
+        const totalBonus = quarterBaseBonus + quarterTaskBonus;
+
+        return {
+          index: index + 1,
+          member,
+          quarterBaseScore,
+          quarterBaseBonus,
+          quarterTaskBonus,
+          quarterDeduction,
+          quarterTotal,
+          totalBonus
+        };
+      });
+
+      // 计算归一化为5分
+      const maxBonus = Math.max(...results.map(r => r.totalBonus), 1);
+      results.forEach(r => {
+        (r as any).normalizedScore = Number(((r.totalBonus / maxBonus) * 5).toFixed(2));
+      });
+
+      // 加分明细
+      const bonusDetails = isArchived
+        ? await prisma.archivedPartyWorkBonusDetail.findMany({ where: { quarterId: qid }, orderBy: [{ year: 'asc' }, { month: 'asc' }] })
+        : await prisma.partyWorkBonusDetail.findMany({ where: { quarterId: qid }, orderBy: [{ year: 'asc' }, { month: 'asc' }] });
+
+      res.json({
+        code: 200,
+        data: {
+          quarter,
+          results,
+          bonusDetails
+        }
+      });
+    } catch (error: any) {
+      res.status(500).json({ code: 500, message: error.message });
+    }
+  },
+
+  // 生成自包含静态HTML分享页（双击即可打开，无需服务器）
+  async exportPublicWorkScoreHtml(req: Request, res: Response) {
+    try {
+      const { quarterId } = req.params;
+      const qid = Number(quarterId);
+
+      const quarter = await prisma.quarter.findUnique({ where: { id: qid } });
+      if (!quarter) {
+        return res.status(404).json({ code: 404, message: '季度不存在' });
+      }
+
+      const allMembers = await prisma.partyMember.findMany({
+        where: { status: 'active' },
+        orderBy: { displayOrder: 'asc' }
+      });
+
+      const members = allMembers.filter(m => isMemberActiveInQuarter(m, quarter.startDate));
+
+      const isArchived = quarter.isArchived;
+      const workScores = isArchived
+        ? await prisma.archivedPartyWorkScore.findMany({ where: { quarterId: qid } })
+        : await prisma.partyWorkScore.findMany({ where: { quarterId: qid } });
+
+      const results = members.map((member, index) => {
+        const memberScores = workScores.filter(s => s.partyMemberId === member.id);
+        const positions = JSON.parse(member.partyPositions || '[]');
+        const quarterBaseScore = 95;
+        const quarterBaseBonus = memberScores.reduce((sum, s) => sum + s.baseBonus, 0);
+        const quarterTaskBonus = memberScores.reduce((sum, s) => sum + s.taskBonus, 0);
+        const quarterDeduction = memberScores.reduce((sum, s) => sum + s.deduction, 0);
+        const quarterTotal = quarterBaseScore + quarterBaseBonus + quarterTaskBonus - quarterDeduction;
+        const totalBonus = quarterBaseBonus + quarterTaskBonus;
+        return {
+          index: index + 1,
+          member,
+          quarterBaseScore,
+          quarterBaseBonus,
+          quarterTaskBonus,
+          quarterDeduction,
+          quarterTotal,
+          totalBonus
+        };
+      });
+
+      const maxBonus = Math.max(...results.map(r => r.totalBonus), 1);
+      results.forEach((r: any) => {
+        r.normalizedScore = Number(((r.totalBonus / maxBonus) * 5).toFixed(2));
+      });
+
+      const bonusDetails = isArchived
+        ? await prisma.archivedPartyWorkBonusDetail.findMany({ where: { quarterId: qid }, orderBy: [{ year: 'asc' }, { month: 'asc' }] })
+        : await prisma.partyWorkBonusDetail.findMany({ where: { quarterId: qid }, orderBy: [{ year: 'asc' }, { month: 'asc' }] });
+
+      // 构建HTML（自包含，所有样式内联，数据内嵌）
+      const startDateStr = quarter.startDate.toISOString().slice(0, 10);
+      const endDateStr = quarter.endDate.toISOString().slice(0, 10);
+      const html = buildShareHtml(quarter, startDateStr, endDateStr, results, bonusDetails);
+
+      const filename = `党务积分公示_${quarter.year}年Q${quarter.quarter}.html`;
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(filename)}"`);
+      res.send(html);
+    } catch (error: any) {
+      res.status(500).json({ code: 500, message: error.message });
+    }
   }
 };
+
+// 自包含HTML构建函数
+function buildShareHtml(quarter: any, startDateStr: string, endDateStr: string, results: any[], bonusDetails: any[]): string {
+  const getPositionsText = (member: any) => {
+    const positions = JSON.parse(member.partyPositions || '[]');
+    const parts: string[] = [];
+    if (positions.length > 0) parts.push(positions.join(','));
+    if (member.isPartyWorker) parts.push('党务工作者');
+    return parts.length > 0 ? parts.join('、') : '-';
+  };
+
+  // 汇总表格行
+  const summaryRows = results.map(r => `
+    <tr>
+      <td style="padding:8px;border:1px solid #ddd;text-align:center">${r.index}</td>
+      <td style="padding:8px;border:1px solid #ddd">${r.member.name}</td>
+      <td style="padding:8px;border:1px solid #ddd;font-size:12px;color:#666">${getPositionsText(r.member)}</td>
+      <td style="padding:8px;border:1px solid #ddd;text-align:center">${r.quarterBaseScore}</td>
+      <td style="padding:8px;border:1px solid #ddd;text-align:center">${r.quarterBaseBonus || ''}</td>
+      <td style="padding:8px;border:1px solid #ddd;text-align:center">${r.quarterTaskBonus || ''}</td>
+      <td style="padding:8px;border:1px solid #ddd;text-align:center">${r.quarterDeduction || ''}</td>
+      <td style="padding:8px;border:1px solid #ddd;text-align:center;font-weight:bold;color:#1890ff">${r.quarterTotal}</td>
+      <td style="padding:8px;border:1px solid #ddd;text-align:center">${r.totalBonus || ''}</td>
+      <td style="padding:8px;border:1px solid #ddd;text-align:center"><span style="background:#1890ff;color:#fff;padding:2px 8px;border-radius:4px;font-size:12px">${r.normalizedScore}</span></td>
+    </tr>
+  `).join('');
+
+  // 明细表格行
+  const detailRows = bonusDetails.map(d => {
+    const member = results.find((r: any) => r.member.id === d.partyMemberId)?.member;
+    return `
+    <tr>
+      <td style="padding:8px;border:1px solid #ddd">${member?.name || '-'}</td>
+      <td style="padding:8px;border:1px solid #ddd;text-align:center">${d.year}年${d.month}月</td>
+      <td style="padding:8px;border:1px solid #ddd">${d.type}</td>
+      <td style="padding:8px;border:1px solid #ddd;text-align:center;color:#52c41a;font-weight:bold">+${d.score}</td>
+      <td style="padding:8px;border:1px solid #ddd;color:#666">${d.content || '-'}</td>
+    </tr>
+    `;
+  }).join('');
+
+  const hasDetails = bonusDetails.length > 0;
+
+  return `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>党务积分公示 - ${quarter.year}年Q${quarter.quarter}</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif; background:#f5f5f5; color:#333; line-height:1.6; }
+  .container { max-width:1200px; margin:0 auto; padding:24px 16px; }
+  .header { text-align:center; margin-bottom:24px; }
+  .header h1 { color:#cf1322; font-size:24px; margin-bottom:4px; }
+  .header .subtitle { color:#999; font-size:14px; }
+  .notice { background:#e6f7ff; border:1px solid #91d5ff; border-radius:4px; padding:12px 16px; margin-bottom:16px; font-size:13px; color:#096dd9; }
+  .section-title { font-size:16px; font-weight:bold; margin:24px 0 12px; padding-bottom:8px; border-bottom:2px solid #cf1322; color:#333; }
+  table { width:100%; border-collapse:collapse; background:#fff; font-size:13px; }
+  th { background:#fafafa; padding:10px 8px; border:1px solid #ddd; text-align:center; font-weight:600; color:#666; white-space:nowrap; }
+  tr:hover { background:#f5f5f5; }
+  .footer { text-align:center; margin-top:32px; color:#999; font-size:12px; }
+  .legend { font-size:12px; color:#666; text-align:right; margin-top:8px; line-height:1.8; }
+  @media (max-width: 768px) {
+    .container { padding:12px 8px; }
+    table { font-size:11px; }
+    th, td { padding:6px 4px; }
+    .header h1 { font-size:18px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>产品研发部党支部 党务积分公示</h1>
+    <div class="subtitle">${quarter.year}年 第${quarter.quarter}季度（${startDateStr} ~ ${endDateStr}）</div>
+  </div>
+
+  <div class="notice">本页面为党务积分季度汇总公示，数据为当季快照，仅供查阅。</div>
+
+  <div class="section-title">季度汇总</div>
+  <table>
+    <thead>
+      <tr>
+        <th style="width:50px">序号</th>
+        <th style="width:80px">姓名</th>
+        <th>职务</th>
+        <th style="width:70px">基础分</th>
+        <th style="width:70px">基础加分</th>
+        <th style="width:70px">任务加分</th>
+        <th style="width:60px">扣分</th>
+        <th style="width:70px">季度小计</th>
+        <th style="width:70px">累计加分</th>
+        <th style="width:70px">归一化5分</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${summaryRows}
+    </tbody>
+  </table>
+  <div class="legend">
+    全员基础分95分；支委基础加分+5分，党务工作者基础加分+3分（每季度首月）；<br>
+    任务加分含分享心得（+0.5分/次）及其他党务任务；归一化5分 = 累计加分 / 最高累计加分 × 5
+  </div>
+
+  ${hasDetails ? `
+  <div class="section-title">加分明细</div>
+  <table>
+    <thead>
+      <tr>
+        <th style="width:80px">姓名</th>
+        <th style="width:100px">年月</th>
+        <th style="width:120px">类型</th>
+        <th style="width:70px">分值</th>
+        <th>内容</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${detailRows}
+    </tbody>
+  </table>
+  ` : ''}
+
+  <div class="footer">
+    产品研发部党支部 · 党员党务积分助手 · 生成于 ${new Date().toLocaleString('zh-CN')}
+  </div>
+</div>
+</body>
+</html>`;
+}

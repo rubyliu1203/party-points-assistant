@@ -9,6 +9,7 @@ import WorkScorePage from './pages/WorkScorePage';
 import BonusPage from './pages/BonusPage';
 import DeductionPage from './pages/DeductionPage';
 import RoleScorePage from './pages/RoleScorePage';
+import ShareWorkScorePage from './pages/ShareWorkScorePage';
 
 function App() {
   return (
@@ -33,6 +34,8 @@ function App() {
             <Route path="deductions" element={<DeductionPage />} />
             <Route path="role-scores" element={<RoleScorePage />} />
           </Route>
+          {/* 公开分享页面（无需登录，无侧边栏） */}
+          <Route path="/share/work-score" element={<ShareWorkScorePage />} />
         </Routes>
       </BrowserRouter>
     </ConfigProvider>

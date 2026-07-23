@@ -6,7 +6,7 @@ import {
 } from 'antd';
 import {
   FileExcelOutlined, PlusOutlined, ReloadOutlined, DeleteOutlined,
-  DownOutlined, UpOutlined, CheckCircleOutlined
+  DownOutlined, UpOutlined, CheckCircleOutlined, ShareAltOutlined
 } from '@ant-design/icons';
 import { workScoreApi } from '../api/workScores';
 import { memberApi } from '../api/members';
@@ -504,6 +504,26 @@ function WorkScorePage() {
             }}
           >
             导出Excel
+          </Button>
+          <Button
+            icon={<ShareAltOutlined />}
+            size="small"
+            onClick={() => {
+              if (!currentQuarter?.id) {
+                message.warning('请先选择季度');
+                return;
+              }
+              const url = `/api/v1/public/work-scores/${currentQuarter.id}/export-html`;
+              const link = document.createElement('a');
+              link.href = url;
+              link.download = `党务积分公示_${currentQuarter.year}年Q${currentQuarter.quarter}.html`;
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+              message.success('公示HTML文件已开始下载，下载完成后双击即可打开');
+            }}
+          >
+            导出公示页
           </Button>
         </Space>
       </div>

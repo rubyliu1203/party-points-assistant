@@ -60,4 +60,8 @@ router.get('/reports/score-summary', reportController.exportScoreSummary);
 router.get('/reports/work-score-summary', reportController.exportWorkScoreSummary);
 router.get('/reports/public-score', reportController.exportPublicScore);
 
+// 公开接口（无需认证）
+router.get('/public/work-scores/:quarterId', workScoreController.getPublicWorkScores);
+router.get('/public/work-scores/:quarterId/export-html', workScoreController.exportPublicWorkScoreHtml);
+
 export default router;
