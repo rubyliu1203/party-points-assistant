@@ -57,7 +57,7 @@ function WorkScorePage() {
       if (res.code === 200) {
         setMembers(res.data.filter((m: any) => m.status === 'active'));
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('加载党员失败');
     }
   };
@@ -85,7 +85,7 @@ function WorkScorePage() {
       if (detailRes.code === 200) {
         setDetailData(detailRes.data);
       }
-    } catch (error) {
+    } catch (error: any) {
       message.error('加载数据失败');
     } finally {
       setLoading(false);
@@ -136,7 +136,9 @@ function WorkScorePage() {
         message.success(res.message);
         loadData();
       }
-    } catch (error) {
+    } catch (error: any) {
+      console.error("重新计算失败详情:", error);
+      console.error("错误响应:", error.response?.data);
       message.error('重新计算失败');
     } finally {
       setLoading(false);
@@ -168,7 +170,9 @@ function WorkScorePage() {
         });
         loadData();
       }
-    } catch (error) {
+    } catch (error: any) {
+      console.error("重新计算失败详情:", error);
+      console.error("错误响应:", error.response?.data);
       message.error('添加失败');
     }
   };
@@ -201,7 +205,9 @@ function WorkScorePage() {
       setBatchModalVisible(false);
       batchForm.resetFields();
       loadData();
-    } catch (error) {
+    } catch (error: any) {
+      console.error("重新计算失败详情:", error);
+      console.error("错误响应:", error.response?.data);
       message.error('批量添加失败');
     }
   };
@@ -213,7 +219,9 @@ function WorkScorePage() {
         message.success('删除成功');
         loadData();
       }
-    } catch (error) {
+    } catch (error: any) {
+      console.error("重新计算失败详情:", error);
+      console.error("错误响应:", error.response?.data);
       message.error('删除失败');
     }
   };

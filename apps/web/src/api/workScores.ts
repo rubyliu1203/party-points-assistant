@@ -43,7 +43,7 @@ export const workScoreApi = {
     api.put(`/work-scores/${id}`, data),
 
   recalculateBaseBonus: (quarterId: number) =>
-    api.post('/work-scores/recalculate', null, { params: { quarterId } }),
+    api.post('/work-scores/recalculate', {}, { params: { quarterId } }),
 
   getWorkScoreDetails: (params: { quarterId?: number; year?: number; month?: number }) =>
     api.get('/work-score-details', { params }),
