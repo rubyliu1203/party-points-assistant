@@ -527,6 +527,84 @@ export const workScoreController = {
     } catch (error: any) {
       res.status(500).json({ code: 500, message: error.message });
     }
+  },
+
+  // 生成PDF公示页（自包含，无需服务器）
+  async exportPublicWorkScorePdf(req: Request, res: Response) {
+    try {
+      const { quarterId } = req.params;
+      const qid = Number(quarterId);
+
+      const quarter = await prisma.quarter.findUnique({ where: { id: qid } });
+      if (!quarter) {
+        return res.status(404).json({ code: 404, message: '季度不存在' });
+      }
+
+      const allMembers = await prisma.partyMember.findMany({
+        where: { status: 'active' },
+        orderBy: { displayOrder: 'asc' }
+      });
+
+      const members = allMembers.filter(m => isMemberActiveInQuarter(m, quarter.startDate));
+
+      const isArchived = quarter.isArchived;
+      const workScores = isArchived
+        ? await prisma.archivedPartyWorkScore.findMany({ where: { quarterId: qid } })
+        : await prisma.partyWorkScore.findMany({ where: { quarterId: qid } });
+
+      const results = members.map((member, index) => {
+        const memberScores = workScores.filter(s => s.partyMemberId === member.id);
+        const positions = JSON.parse(member.partyPositions || '[]');
+        const quarterBaseScore = 95;
+        const quarterBaseBonus = memberScores.reduce((sum, s) => sum + s.baseBonus, 0);
+        const quarterTaskBonus = memberScores.reduce((sum, s) => sum + s.taskBonus, 0);
+        const quarterDeduction = memberScores.reduce((sum, s) => sum + s.deduction, 0);
+        const quarterTotal = quarterBaseScore + quarterBaseBonus + quarterTaskBonus - quarterDeduction;
+        const totalBonus = quarterBaseBonus + quarterTaskBonus;
+        return {
+          index: index + 1,
+          member,
+          quarterBaseScore,
+          quarterBaseBonus,
+          quarterTaskBonus,
+          quarterDeduction,
+          quarterTotal,
+          totalBonus
+        };
+      });
+
+      const maxBonus = Math.max(...results.map(r => r.totalBonus), 1);
+      results.forEach((r: any) => {
+        r.normalizedScore = Number(((r.totalBonus / maxBonus) * 5).toFixed(2));
+      });
+
+      const bonusDetails = isArchived
+        ? await prisma.archivedPartyWorkBonusDetail.findMany({ where: { quarterId: qid }, orderBy: [{ year: 'asc' }, { month: 'asc' }] })
+        : await prisma.partyWorkBonusDetail.findMany({ where: { quarterId: qid }, orderBy: [{ year: 'asc' }, { month: 'asc' }] });
+
+      const startDateStr = quarter.startDate.toISOString().slice(0, 10);
+      const endDateStr = quarter.endDate.toISOString().slice(0, 10);
+      const html = buildShareHtml(quarter, startDateStr, endDateStr, results, bonusDetails);
+
+      // 用puppeteer生成PDF
+      const puppeteer = require('puppeteer');
+      const browser = await puppeteer.launch({ headless: true });
+      const page = await browser.newPage();
+      await page.setContent(html, { waitUntil: 'networkidle0' });
+      const pdfBuffer = await page.pdf({
+        format: 'A4',
+        printBackground: true,
+        margin: { top: '20px', right: '20px', bottom: '20px', left: '20px' }
+      });
+      await browser.close();
+
+      const filename = `党务积分公示_${quarter.year}年Q${quarter.quarter}.pdf`;
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(filename)}"`);
+      res.end(pdfBuffer);
+    } catch (error: any) {
+      res.status(500).json({ code: 500, message: error.message });
+    }
   }
 };
 
