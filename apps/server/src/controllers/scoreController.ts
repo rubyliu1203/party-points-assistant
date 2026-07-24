@@ -368,8 +368,6 @@ function buildScoreShareHtml(quarter: any, startDateStr: string, endDateStr: str
       <td style="padding:8px;border:1px solid #ddd;text-align:center">${s.politicalScore}</td>
       <td style="padding:8px;border:1px solid #ddd;text-align:center">${s.disciplineScore}</td>
       <td style="padding:8px;border:1px solid #ddd;text-align:center">${s.moralityScore}</td>
-      <td style="padding:8px;border:1px solid #ddd;text-align:center">${s.performanceLevel || '-'}</td>
-      <td style="padding:8px;border:1px solid #ddd;text-align:center">${s.performanceScore ?? '-'}</td>
       <td style="padding:8px;border:1px solid #ddd;text-align:center">${s.roleScore ?? '-'}</td>
       <td style="padding:8px;border:1px solid #ddd;text-align:center;color:#52c41a;font-weight:bold">${s.bonusScore > 0 ? '+' + s.bonusScore : '-'}</td>
       <td style="padding:8px;border:1px solid #ddd;text-align:center;color:#f5222d;font-weight:bold">${s.deductionScore > 0 ? '-' + s.deductionScore : '-'}</td>
@@ -415,8 +413,6 @@ function buildScoreShareHtml(quarter: any, startDateStr: string, endDateStr: str
         <th style="width:60px">政治</th>
         <th style="width:60px">纪律</th>
         <th style="width:60px">品德</th>
-        <th style="width:60px">绩效</th>
-        <th style="width:50px">绩效分</th>
         <th style="width:60px">履职</th>
         <th style="width:50px">加分</th>
         <th style="width:50px">扣分</th>
