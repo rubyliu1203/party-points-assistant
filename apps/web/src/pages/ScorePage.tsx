@@ -3,7 +3,7 @@ import { useOutletContext } from 'react-router-dom';
 import {
   Table, Button, Modal, Form, Select, Tag, Space, message, Tooltip
 } from 'antd';
-import { ReloadOutlined, EditOutlined, FileExcelOutlined, EyeOutlined, EyeInvisibleOutlined } from '@ant-design/icons';
+import { ReloadOutlined, EditOutlined, FileExcelOutlined, EyeOutlined, EyeInvisibleOutlined, ShareAltOutlined } from '@ant-design/icons';
 import { scoreApi } from '../api/scores';
 import type { PartyMemberScore } from '../api/scores';
 
@@ -69,17 +69,32 @@ function ScorePage() {
       message.warning('请先选择季度');
       return;
     }
-    
+
     const url = type === 'public'
       ? `/api/v1/reports/public-score?quarterId=${currentQuarter.id}`
       : `/api/v1/reports/score-summary?quarterId=${currentQuarter.id}`;
-    
+
     const link = document.createElement('a');
     link.href = url;
     link.download = type === 'public' ? '党员积分公示版.xlsx' : '党员积分总台账.xlsx';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  const handleExportPdf = () => {
+    if (!currentQuarter?.id) {
+      message.warning('请先选择季度');
+      return;
+    }
+    const url = `/api/v1/public/scores/${currentQuarter.id}/export-pdf`;
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `党员积分公示_${currentQuarter.year}年Q${currentQuarter.quarter}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    message.success('公示PDF文件已开始下载，下载完成后双击即可打开');
   };
 
   const handleSubmit = async (values: any) => {
@@ -230,10 +245,10 @@ function ScorePage() {
             导出Excel
           </Button>
           <Button
-            icon={<FileExcelOutlined />}
-            onClick={() => handleExport('public')}
+            icon={<ShareAltOutlined />}
+            onClick={handleExportPdf}
           >
-            导出公示版
+            导出公示页
           </Button>
         </Space>
       </div>

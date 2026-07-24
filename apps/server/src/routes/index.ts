@@ -64,5 +64,6 @@ router.get('/reports/public-score', reportController.exportPublicScore);
 router.get('/public/work-scores/:quarterId', workScoreController.getPublicWorkScores);
 router.get('/public/work-scores/:quarterId/export-html', workScoreController.exportPublicWorkScoreHtml);
 router.get('/public/work-scores/:quarterId/export-pdf', workScoreController.exportPublicWorkScorePdf);
+router.get('/public/scores/:quarterId/export-pdf', scoreController.exportPublicScorePdf);
 
 export default router;
