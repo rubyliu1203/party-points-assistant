@@ -11,9 +11,24 @@ echo "==========================================="
 echo "  党员党务积分助手 - 启动脚本"
 echo "==========================================="
 
+# ========== 步骤0: 创建 .env 文件（全新环境首次启动） ==========
+echo ""
+echo "⚙️  [0/5] 检查环境配置..."
+if [ ! -f "apps/server/.env" ]; then
+    if [ -f "apps/server/.env.example" ]; then
+        cp apps/server/.env.example apps/server/.env
+        echo "   ✦ 已从 .env.example 创建 .env 配置文件"
+    else
+        echo "   ⚠️  apps/server/.env.example 不存在，请手动创建 .env 文件"
+        echo '       内容示例: DATABASE_URL="file:../../../data/database.sqlite"'
+    fi
+else
+    echo "   ✓ 环境配置文件已存在"
+fi
+
 # ========== 步骤1: 安装根目录依赖 ==========
 echo ""
-echo "📦 [1/4] 检查并安装根目录依赖..."
+echo "📦 [1/5] 检查并安装根目录依赖..."
 if [ ! -d "node_modules" ]; then
     npm install
 else
@@ -22,7 +37,7 @@ fi
 
 # ========== 步骤2: 安装后端依赖 ==========
 echo ""
-echo "📦 [2/4] 检查并安装后端依赖..."
+echo "📦 [2/5] 检查并安装后端依赖..."
 cd apps/server
 if [ ! -d "node_modules" ]; then
     npm install
@@ -32,18 +47,38 @@ fi
 
 # ========== 步骤3: 安装前端依赖 ==========
 echo ""
-echo "📦 [3/4] 检查并安装前端依赖..."
+echo "📦 [3/5] 检查并安装前端依赖..."
 cd ../web
 if [ ! -d "node_modules" ]; then
     npm install
 else
     echo "   ✓ 前端依赖已存在"
 fi
+
+# 检查 rolldown native binding（npm optional dependencies bug 修复）
+# Vite 8 内置 rolldown，npm 安装时可能不会自动下载平台对应的 native binding
+if [ ! -d "node_modules/@rolldown/binding-darwin-x64" ] && [ ! -d "node_modules/@rolldown/binding-darwin-arm64" ]; then
+    echo "   ⚠️  rolldown native binding 缺失，正在修复..."
+    # 判断当前平台架构
+    ARCH=$(uname -m)
+    if [ "$ARCH" = "arm64" ]; then
+        ROLLDOWN_PKG="@rolldown/binding-darwin-arm64"
+    elif [ "$ARCH" = "x86_64" ]; then
+        ROLLDOWN_PKG="@rolldown/binding-darwin-x64"
+    else
+        echo "   ⚠️  未知的 Mac 架构: $ARCH，请手动安装对应 rolldown binding"
+        ROLLDOWN_PKG=""
+    fi
+    if [ -n "$ROLLDOWN_PKG" ]; then
+        npm install "$ROLLDOWN_PKG" --no-save
+        echo "   ✦ 已安装 $ROLLDOWN_PKG"
+    fi
+fi
 cd ../..
 
 # ========== 步骤4: 初始化数据库 ==========
 echo ""
-echo "🗄️  [4/4] 初始化数据库..."
+echo "🗄️  [4/5] 初始化数据库..."
 cd apps/server
 
 # 检查数据库文件是否存在
@@ -51,6 +86,7 @@ cd apps/server
 DB_FILE="../../data/database.sqlite"
 if [ ! -f "$DB_FILE" ]; then
     echo "   🌱 首次启动，正在创建数据库..."
+    mkdir -p ../../data
     npx prisma db push --skip-generate
     npx prisma generate
     npx tsx src/seed.ts
@@ -67,7 +103,7 @@ cd ../..
 # ========== 启动服务 ==========
 echo ""
 echo "==========================================="
-echo "🚀 正在启动党员党务积分助手..."
+echo "🚀 [5/5] 正在启动党员党务积分助手..."
 echo ""
 echo "📝 后端服务: http://localhost:3001"
 echo "🌐 前端界面: http://localhost:3000"
